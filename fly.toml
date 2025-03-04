@@ -1,0 +1,24 @@
+# fly.toml app configuration file generated for benjaminclauss-protohackers on 2025-02-23T15:04:14-06:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'benjaminclauss-protohackers'
+primary_region = 'ewr'
+
+[build]
+
+[env]
+  PORT = '12345'
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 12345 # Match the port your app listens on
+
+  [[services.ports]]
+    port = 12345  # Change to the TCP port you want to expose
