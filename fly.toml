@@ -8,9 +8,6 @@ primary_region = 'ewr'
 
 [build]
 
-[env]
-  PORT = '12345'
-
 [[vm]]
   memory = '1gb'
   cpu_kind = 'shared'
@@ -18,7 +15,7 @@ primary_region = 'ewr'
 
 [[services]]
   protocol = "tcp"
-  internal_port = 12345 # Match the port your app listens on
+  internal_port = 50001 # Match the port your app listens on
 
   [[services.ports]]
-    port = 12345  # Change to the TCP port you want to expose
+    port = 50001  # Change to the TCP port you want to expose

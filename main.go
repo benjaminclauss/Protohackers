@@ -8,29 +8,33 @@ import (
 )
 
 func main() {
-	// Listen on a random available port
-	listener, err := net.Listen("tcp", ":12345")
+	err := SmokeTest()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
+	}
+}
+
+func SmokeTest() error {
+	listener, err := net.Listen("tcp", ":50001")
+	if err != nil {
+		return err
 	}
 	defer listener.Close()
 
-	// Get and print assigned port
 	addr := listener.Addr().(*net.TCPAddr)
 	fmt.Printf("Listening on port: %d\n", addr.Port)
 
-	// Accept and handle connections
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			fmt.Println("Connection error:", err)
 			continue
 		}
-		go handleConnection(conn)
+		go echo(conn)
 	}
 }
 
-func handleConnection(conn net.Conn) {
+func echo(conn net.Conn) {
 	defer conn.Close()
 	fmt.Println("New connection:", conn.RemoteAddr())
 
