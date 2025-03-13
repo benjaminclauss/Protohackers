@@ -37,8 +37,7 @@ func meansToAnEnd(conn net.Conn) {
 	// TODO: Use slog.
 	fmt.Println("New connection:", conn.RemoteAddr())
 
-	reader := bufio.NewReaderSize(conn, messageSize)
-
+	reader := bufio.NewReader(conn)
 	buf := make([]byte, 9)
 	for {
 		n, err := reader.Read(buf)
