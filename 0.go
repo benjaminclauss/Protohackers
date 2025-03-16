@@ -30,8 +30,7 @@ func SmokeTest() error {
 }
 
 func echo(conn net.Conn) {
-	// TODO: Handle closures.
-	defer conn.Close()
+	defer CloseOrLog(conn)
 	fmt.Println("New connection:", conn.RemoteAddr())
 
 	reader := bufio.NewReader(conn)

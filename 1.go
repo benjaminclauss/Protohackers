@@ -44,8 +44,7 @@ type PrimeResponse struct {
 }
 
 func primeTime(conn net.Conn) {
-	// TODO: Handle closure.
-	defer conn.Close()
+	defer CloseOrLog(conn)
 	// TODO: Use slog.
 	fmt.Println("New connection:", conn.RemoteAddr())
 
