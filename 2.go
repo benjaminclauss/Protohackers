@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"log"
+	"math"
 	"net"
 	"time"
 )
@@ -30,6 +32,11 @@ func MeansToAnEnd() error {
 	}
 }
 
+type TimestampedPrice struct {
+	Timestamp time.Time
+	Price     int32
+}
+
 func meansToAnEnd(conn net.Conn) {
 	defer CloseOrLog(conn)
 	// TODO: Use slog.
@@ -37,8 +44,9 @@ func meansToAnEnd(conn net.Conn) {
 
 	reader := bufio.NewReader(conn)
 	buf := make([]byte, 9)
+	var prices []TimestampedPrice
 	for {
-		n, err := reader.Read(buf)
+		n, err := io.ReadFull(reader, buf)
 		if err != nil {
 			log.Printf("Connection closed or error: %v", err)
 			return
@@ -74,6 +82,7 @@ func meansToAnEnd(conn net.Conn) {
 			fmt.Printf("Timestamp: %s\n", t)
 			price := secondInt
 			fmt.Printf("Price: %d\n", price)
+			prices = append(prices, TimestampedPrice{Timestamp: t, Price: price})
 		case messageType == 'Q':
 			fmt.Println("Query")
 			minTime := time.Unix(int64(firstInt), 0).UTC()
@@ -82,10 +91,26 @@ func meansToAnEnd(conn net.Conn) {
 			fmt.Printf("maxtime: %s\n", maxTime)
 
 			// TODO:The server must then send the mean to the client as a single int32.
-			avg := int32(12345)
+			var pricesInRange []TimestampedPrice
+			mean := 0.0
+			for _, p := range prices {
+				if isInRange(p.Timestamp, minTime, maxTime) {
+					pricesInRange = append(pricesInRange, p)
+				}
+			}
+			if len(pricesInRange) > 0 {
+				total := 0.0
+				for _, p := range pricesInRange {
+					total += float64(p.Price)
+				}
+				mean = total / float64(len(pricesInRange))
+			}
+
+			fmt.Println(prices)
+			fmt.Println(mean)
 
 			resp := new(bytes.Buffer)
-			err = binary.Write(resp, binary.BigEndian, avg) // Use BigEndian or LittleEndian as needed
+			err = binary.Write(resp, binary.BigEndian, int32(math.Round(mean)))
 			if err != nil {
 				fmt.Println("Binary write error:", err)
 				return
@@ -105,4 +130,8 @@ func meansToAnEnd(conn net.Conn) {
 		}
 
 	}
+}
+
+func isInRange(t, start, end time.Time) bool {
+	return !t.Before(start) && !t.After(end) // Equivalent to start <= t <= end
 }
