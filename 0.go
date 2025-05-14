@@ -2,36 +2,12 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"log"
 	"net"
 )
 
-func SmokeTest() error {
-	// TODO: Propagate context when listening.
-	listener, err := net.Listen("tcp", ":50001")
-	if err != nil {
-		return err
-	}
-	defer listener.Close()
-
-	addr := listener.Addr().(*net.TCPAddr)
-	fmt.Printf("Listening on port: %d\n", addr.Port)
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			// TODO: Use slog.
-			fmt.Println("Connection error:", err)
-			continue
-		}
-		go echo(conn)
-	}
-}
-
-func echo(conn net.Conn) {
+func SmokeTest(conn net.Conn) {
 	defer CloseOrLog(conn)
-	fmt.Println("New connection:", conn.RemoteAddr())
 
 	reader := bufio.NewReader(conn)
 

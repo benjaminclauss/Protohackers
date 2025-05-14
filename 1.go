@@ -9,26 +9,6 @@ import (
 	"os"
 )
 
-func PrimeTime() error {
-	listener, err := net.Listen("tcp", ":50002")
-	if err != nil {
-		return err
-	}
-	defer listener.Close()
-
-	addr := listener.Addr().(*net.TCPAddr)
-	fmt.Printf("Listening on port: %d\n", addr.Port)
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			fmt.Println("Connection error:", err)
-			continue
-		}
-		go primeTime(conn)
-	}
-}
-
 type PrimeRequest struct {
 	// Method must always contain "isPrime".
 	Method *string `json:"method"`
@@ -43,7 +23,7 @@ type PrimeResponse struct {
 	Prime bool `json:"prime"`
 }
 
-func primeTime(conn net.Conn) {
+func PrimeTime(conn net.Conn) {
 	defer CloseOrLog(conn)
 	// TODO: Use slog.
 	fmt.Println("New connection:", conn.RemoteAddr())

@@ -12,32 +12,12 @@ import (
 	"time"
 )
 
-func MeansToAnEnd() error {
-	listener, err := net.Listen("tcp", ":50003")
-	if err != nil {
-		return err
-	}
-	defer listener.Close()
-
-	addr := listener.Addr().(*net.TCPAddr)
-	fmt.Printf("Listening on port: %d\n", addr.Port)
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			fmt.Println("Connection error:", err)
-			continue
-		}
-		go meansToAnEnd(conn)
-	}
-}
-
 type TimestampedPrice struct {
 	Timestamp time.Time
 	Price     int32
 }
 
-func meansToAnEnd(conn net.Conn) {
+func MeansToAnEnd(conn net.Conn) {
 	defer CloseOrLog(conn)
 	// TODO: Use slog.
 	fmt.Println("New connection:", conn.RemoteAddr())
