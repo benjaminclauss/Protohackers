@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"log"
 	"net"
 )
 
@@ -11,16 +10,17 @@ func SmokeTest(conn net.Conn) {
 
 	reader := bufio.NewReader(conn)
 
-	buf := make([]byte, 4096) // Read in 4KB chunks
+	buf := make([]byte, 4096)
 	for {
 		n, err := reader.Read(buf)
 		if err != nil {
-			log.Printf("Connection closed or error: %v", err)
+			LogReadError(err)
 			return
 		}
 
-		log.Printf("Received %d bytes", n)
-		// TODO: Handle error.
-		conn.Write(buf[:n]) // Echo back
+		if _, err := conn.Write(buf[:n]); err != nil {
+			LogWriteError(err)
+			return
+		}
 	}
 }
