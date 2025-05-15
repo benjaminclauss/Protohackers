@@ -4,16 +4,25 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
+	"os"
 
 	"golang.org/x/sync/errgroup"
 )
 
 func main() {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
 	g, _ := errgroup.WithContext(context.Background())
 	g.Go(func() error { return serve(50001, SmokeTest) })
 	g.Go(func() error { return serve(50002, PrimeTime) })
 	g.Go(func() error { return serve(50003, MeansToAnEnd) })
+
+	chat := NewBudgetChat(DefaultWelcomeMessage)
+	g.Go(func() error { return serve(50004, chat.Handle) })
+
 	err := g.Wait()
 	if err != nil {
 		log.Fatal(err)
@@ -32,10 +41,12 @@ func serve(port int, handler func(net.Conn)) error {
 
 	for {
 		conn, err := listener.Accept()
+		fmt.Println("New connection:", conn.RemoteAddr())
 		if err != nil {
 			fmt.Println("Connection error:", err)
 			continue
 		}
+		fmt.Println("handling that")
 		go handler(conn)
 	}
 }

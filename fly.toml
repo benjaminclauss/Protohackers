@@ -30,3 +30,10 @@ primary_region = 'ewr'
   internal_port = 50003
   [[services.ports]]
     port = 50003
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 50004
+  [[services.ports]]
+    port = 50004
+
