@@ -37,3 +37,8 @@ primary_region = 'ewr'
   [[services.ports]]
     port = 50004
 
+[[services]]
+  protocol = "udp"
+  internal_port = 50005
+  [[services.ports]]
+    port = 50005

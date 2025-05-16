@@ -23,6 +23,15 @@ func main() {
 	chat := NewBudgetChat(DefaultWelcomeMessage)
 	g.Go(func() error { return serve(50004, chat.Handle) })
 
+	p := &UnusualDatabaseProgram{data: make(map[string]string)}
+	g.Go(func() error {
+		pc, err := net.ListenPacket("udp", "fly-global-services:50005")
+		if err != nil {
+			log.Fatal(err)
+		}
+		return p.Listen(pc)
+	})
+
 	err := g.Wait()
 	if err != nil {
 		log.Fatal(err)
