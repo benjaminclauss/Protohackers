@@ -25,6 +25,7 @@ func main() {
 
 	p := &UnusualDatabaseProgram{data: make(map[string]string)}
 	g.Go(func() error {
+		// TODO: Inject this in deploy.
 		pc, err := net.ListenPacket("udp", "fly-global-services:50005")
 		if err != nil {
 			log.Fatal(err)
