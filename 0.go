@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"io"
 	"net"
 )
 
@@ -13,12 +14,14 @@ func SmokeTest(conn net.Conn) {
 	buf := make([]byte, 4096)
 	for {
 		n, err := reader.Read(buf)
-		if err != nil {
+		if err == io.EOF {
+			return
+		} else if err != nil {
 			LogReadError(err)
 			return
 		}
 
-		if _, err := conn.Write(buf[:n]); err != nil {
+		if _, err = conn.Write(buf[:n]); err != nil {
 			LogWriteError(err)
 			return
 		}
