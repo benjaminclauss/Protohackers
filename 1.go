@@ -23,6 +23,7 @@ type PrimeResponse struct {
 	Prime bool `json:"prime"`
 }
 
+// TODO: Polish.
 func PrimeTime(conn net.Conn) {
 	defer CloseOrLog(conn)
 

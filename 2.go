@@ -17,6 +17,7 @@ type TimestampedPrice struct {
 	Price     int32
 }
 
+// TODO: Polish.
 func MeansToAnEnd(conn net.Conn) {
 	defer CloseOrLog(conn)
 	// TODO: Use slog.
