@@ -25,8 +25,6 @@ type PrimeResponse struct {
 
 func PrimeTime(conn net.Conn) {
 	defer CloseOrLog(conn)
-	// TODO: Use slog.
-	fmt.Println("New connection:", conn.RemoteAddr())
 
 	scanner := bufio.NewScanner(conn)
 	// After connecting, a client may send multiple requests in a single session.
@@ -34,7 +32,6 @@ func PrimeTime(conn net.Conn) {
 	for scanner.Scan() {
 		// Each request is a single line containing a JSON object, terminated by a newline character ('\n', or ASCII 10).
 		line := scanner.Text()
-		fmt.Println(line)
 		var r PrimeRequest
 		err := json.Unmarshal([]byte(line), &r)
 
