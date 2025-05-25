@@ -29,8 +29,6 @@ func NewBudgetChat(namePromptMessage string) *BudgetChat {
 
 func (b *BudgetChat) Handle(conn net.Conn) {
 	defer CloseOrLog(conn)
-	fmt.Println("New connection:", conn.RemoteAddr())
-	slog.Info("handling connection", "remote_addr", conn.RemoteAddr())
 
 	if _, err := fmt.Fprintln(conn, b.namePromptMessage); err != nil {
 		return

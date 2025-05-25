@@ -56,7 +56,6 @@ func PrimeTime(conn net.Conn) {
 			conn.Write(append(resp, '\n'))
 			return
 		default:
-			fmt.Println(*r.Number)
 			resp, _ := json.Marshal(PrimeResponse{Method: "isPrime", Prime: isPrime(*r.Number)})
 			conn.Write(append(resp, '\n'))
 		}

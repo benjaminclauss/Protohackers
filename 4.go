@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log/slog"
 	"net"
 	"strings"
@@ -31,7 +30,6 @@ func (p *UnusualDatabaseProgram) handleRequest(conn net.PacketConn, addr net.Add
 	request := string(bytes)
 	slog.Info("received request", "request", request)
 	parts := strings.SplitN(request, insertRequestDelimiter, 2)
-	fmt.Println(parts)
 	if len(parts) == 2 {
 		p.mu.Lock()
 		defer p.mu.Unlock()

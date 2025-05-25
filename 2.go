@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"math"
 	"net"
 	"time"
@@ -21,7 +22,6 @@ type TimestampedPrice struct {
 func MeansToAnEnd(conn net.Conn) {
 	defer CloseOrLog(conn)
 	// TODO: Use slog.
-	fmt.Println("New connection:", conn.RemoteAddr())
 
 	reader := bufio.NewReader(conn)
 	buf := make([]byte, 9)
@@ -58,14 +58,12 @@ func MeansToAnEnd(conn net.Conn) {
 
 		switch {
 		case messageType == 'I':
-			fmt.Println("Insertion")
 			t := time.Unix(int64(firstInt), 0).UTC()
 			fmt.Printf("Timestamp: %s\n", t)
 			price := secondInt
 			fmt.Printf("Price: %d\n", price)
 			prices = append(prices, TimestampedPrice{Timestamp: t, Price: price})
 		case messageType == 'Q':
-			fmt.Println("Query")
 			minTime := time.Unix(int64(firstInt), 0).UTC()
 			fmt.Printf("mintime: %s\n", minTime)
 			maxTime := time.Unix(int64(secondInt), 0).UTC()
@@ -87,26 +85,22 @@ func MeansToAnEnd(conn net.Conn) {
 				mean = total / float64(len(pricesInRange))
 			}
 
-			fmt.Println(prices)
-			fmt.Println(mean)
-
 			resp := new(bytes.Buffer)
 			err = binary.Write(resp, binary.BigEndian, int32(math.Round(mean)))
 			if err != nil {
-				fmt.Println("Binary write error:", err)
+				slog.Error("Binary write error", "err", err)
 				return
 			}
 
 			// Send bytes over the connection
 			_, err = conn.Write(resp.Bytes())
 			if err != nil {
-				fmt.Println("Write error:", err)
+				LogWriteError(err)
 				return
 			}
 
 		default:
-			fmt.Println("Unknown message:", messageType)
-			fmt.Println(buf)
+			slog.Error("unknown message", "type", messageType)
 			fmt.Errorf("invalid message type")
 		}
 
