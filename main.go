@@ -6,13 +6,16 @@ import (
 	"log"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 
 	"golang.org/x/sync/errgroup"
 )
 
 func main() {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug, // now debug messages are shown too
+	}))
 	slog.SetDefault(logger)
 
 	g, _ := errgroup.WithContext(context.Background())
@@ -23,14 +26,26 @@ func main() {
 	chat := NewBudgetChat(DefaultWelcomeMessage)
 	g.Go(func() error { return serve(50004, chat.Handle) })
 
+	host := os.Getenv("HOST")
+	if host == "" {
+		host = "localhost"
+	}
+
 	p := &UnusualDatabaseProgram{data: make(map[string]string)}
 	g.Go(func() error {
 		// TODO: Inject this in deploy.
-		pc, err := net.ListenPacket("udp", "fly-global-services:50005")
+		pc, err := net.ListenPacket("udp", host+":50005")
 		if err != nil {
 			log.Fatal(err)
 		}
 		return p.Listen(pc)
+	})
+
+	g.Go(func() error { return serve(50006, MobInTheMiddle) })
+
+	g.Go(func() error {
+		http.HandleFunc("/", landingPageHandler)
+		return http.ListenAndServe(":8080", nil)
 	})
 
 	err := g.Wait()
@@ -47,16 +62,15 @@ func serve(port int, handler func(net.Conn)) error {
 	defer listener.Close()
 
 	addr := listener.Addr().(*net.TCPAddr)
-	fmt.Printf("Listening on port: %d\n", addr.Port)
+	slog.Info("listening", "port", addr.Port)
 
 	for {
 		conn, err := listener.Accept()
-		fmt.Println("New connection:", conn.RemoteAddr())
 		if err != nil {
-			fmt.Println("Connection error:", err)
+			slog.Warn("connection error", "err", err)
 			continue
 		}
-		fmt.Println("handling that")
+		slog.Debug("accepted new connection", "remote", conn.RemoteAddr())
 		go handler(conn)
 	}
 }
