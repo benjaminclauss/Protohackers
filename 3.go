@@ -27,16 +27,17 @@ func NewBudgetChat(namePromptMessage string) *BudgetChat {
 	}
 }
 
-func (b *BudgetChat) Handle(conn net.Conn) {
+func (b *BudgetChat) Handle(conn net.Conn) error {
 	defer CloseOrLog(conn)
 
 	if _, err := fmt.Fprintln(conn, b.namePromptMessage); err != nil {
-		return
+		return err
 	}
 
 	scanner := bufio.NewScanner(conn)
 	if !scanner.Scan() {
-		return
+		// TODO: Handle
+		return fmt.Errorf("budgetchat: no user names found")
 	}
 
 	name := scanner.Text()
@@ -45,21 +46,23 @@ func (b *BudgetChat) Handle(conn net.Conn) {
 		if err != nil {
 			LogWriteError(err)
 		}
-		return
+		return err
 	}
 	defer b.disconnect(name)
 
 	b.announcePresence(name)
 	if err := b.listAllPresentUserNames(name, conn); err != nil {
-		return
+		return err
 	}
 
 	for scanner.Scan() {
 		b.relay(name, scanner.Text())
 	}
 	if err := scanner.Err(); err != nil {
+		// TODO: Clean.
 		LogReadError(err)
 	}
+	return nil
 }
 
 func (b *BudgetChat) validateAndAddUser(name string, conn net.Conn) error {

@@ -54,7 +54,7 @@ func main() {
 	}
 }
 
-func serve(port int, handler func(net.Conn)) error {
+func serve(port int, handler func(net.Conn) error) error {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return err

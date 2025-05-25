@@ -19,7 +19,7 @@ type TimestampedPrice struct {
 }
 
 // TODO: Polish.
-func MeansToAnEnd(conn net.Conn) {
+func MeansToAnEnd(conn net.Conn) error {
 	defer CloseOrLog(conn)
 	// TODO: Use slog.
 
@@ -30,7 +30,7 @@ func MeansToAnEnd(conn net.Conn) {
 		n, err := io.ReadFull(reader, buf)
 		if err != nil {
 			log.Printf("Connection closed or error: %v", err)
-			return
+			return err
 		}
 
 		log.Printf("Received %d bytes", n)
@@ -46,14 +46,14 @@ func MeansToAnEnd(conn net.Conn) {
 		var firstInt int32
 		err = binary.Read(bytes.NewReader(buf[1:5]), binary.BigEndian, &firstInt)
 		if err != nil {
-			return
+			return err
 		}
 
 		// Read the second 4-byte integer (bytes 5-9)
 		var secondInt int32
 		err = binary.Read(bytes.NewReader(buf[5:9]), binary.BigEndian, &secondInt)
 		if err != nil {
-			return
+			return err
 		}
 
 		switch {
@@ -89,14 +89,13 @@ func MeansToAnEnd(conn net.Conn) {
 			err = binary.Write(resp, binary.BigEndian, int32(math.Round(mean)))
 			if err != nil {
 				slog.Error("Binary write error", "err", err)
-				return
+				return err
 			}
 
 			// Send bytes over the connection
 			_, err = conn.Write(resp.Bytes())
 			if err != nil {
-				LogWriteError(err)
-				return
+				return err
 			}
 
 		default:

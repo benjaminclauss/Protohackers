@@ -24,7 +24,7 @@ type PrimeResponse struct {
 }
 
 // TODO: Polish.
-func PrimeTime(conn net.Conn) {
+func PrimeTime(conn net.Conn) error {
 	defer CloseOrLog(conn)
 
 	scanner := bufio.NewScanner(conn)
@@ -46,15 +46,15 @@ func PrimeTime(conn net.Conn) {
 		case err != nil:
 			resp, _ := json.Marshal(PrimeResponse{Method: "malformed"})
 			conn.Write(append(resp, '\n'))
-			return
+			return nil
 		case r.Method == nil || r.Number == nil:
 			resp, _ := json.Marshal(PrimeResponse{Method: "malformed"})
 			conn.Write(append(resp, '\n'))
-			return
+			return nil
 		case *r.Method != "isPrime":
 			resp, _ := json.Marshal(PrimeResponse{Method: "malformed"})
 			conn.Write(append(resp, '\n'))
-			return
+			return nil
 		default:
 			resp, _ := json.Marshal(PrimeResponse{Method: "isPrime", Prime: isPrime(*r.Number)})
 			conn.Write(append(resp, '\n'))
@@ -63,6 +63,7 @@ func PrimeTime(conn net.Conn) {
 	if err := scanner.Err(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 	}
+	return nil
 }
 
 func isPrime(number float64) bool {

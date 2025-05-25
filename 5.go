@@ -15,7 +15,7 @@ const (
 	TonyBoguscoinAddress  = "7YWHMfk9JZe0LM0g1ZauHuiSxhI"
 )
 
-func MobInTheMiddle(conn net.Conn) {
+func MobInTheMiddle(conn net.Conn) error {
 	defer CloseOrLog(conn)
 
 	// For each client that connects to proxy server, make a corresponding outward connection to the upstream server.
@@ -47,6 +47,8 @@ func MobInTheMiddle(conn net.Conn) {
 	conn.Close()
 	upstreamConn.Close()
 	wg.Wait()
+	// TODO: Handle above.
+	return nil
 }
 
 func relayAndOverwrite(source, destination net.Conn) error {
