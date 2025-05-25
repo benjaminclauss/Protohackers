@@ -19,7 +19,8 @@ func main() {
 	slog.SetDefault(logger)
 
 	g, _ := errgroup.WithContext(context.Background())
-	g.Go(func() error { return serve(50001, SmokeTest) })
+
+	g.Go(func() error { return serve(50001, Echo) })
 	g.Go(func() error { return serve(50002, PrimeTime) })
 	g.Go(func() error { return serve(50003, MeansToAnEnd) })
 
