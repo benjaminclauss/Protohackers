@@ -20,6 +20,7 @@ type Camera struct {
 // speed limit (speed = distance / time), it will find the responsible ticket dispatcher and send it a ticket for the
 // offending car, so that the ticket dispatcher can perform the necessary legal rituals.
 type TicketDispatcher struct {
+	Roads []uint16
 }
 
 // A Road in the network is identified by a number from 0 to 65535.

@@ -47,7 +47,7 @@ func (s *SpeedLimitEnforcementServer) handleCamera(client net.Conn) error {
 	}
 
 	c := Camera{Road: m.Road, Mile: m.Mile, Limit: m.Limit}
-	slog.Info("camera registered", "road", c.Road, "mile", c.Mile, "limit", c.Limit)
+	slog.Info("camera connected", "road", c.Road, "mile", c.Mile, "limit", c.Limit)
 
 	// TODO: Handle camera.
 
@@ -55,7 +55,7 @@ func (s *SpeedLimitEnforcementServer) handleCamera(client net.Conn) error {
 		var t uint8
 		// TODO: Should we ever disconnect client?
 		if err := binary.Read(client, binary.BigEndian, &t); err != nil {
-			return fmt.Errorf("read error: %w", err)
+			return fmt.Errorf("error reading message type: %w", err)
 		}
 
 		switch t {
@@ -77,7 +77,36 @@ func (s *SpeedLimitEnforcementServer) handleCamera(client net.Conn) error {
 }
 
 func (s *SpeedLimitEnforcementServer) handleDispatcher(client net.Conn) error {
-	return nil
+	m, err := readIAmDispatcherMessage(client)
+	if err != nil {
+		return fmt.Errorf("error reading IAmCamera message: %w", err)
+	}
+
+	d := TicketDispatcher{Roads: m.Roads}
+	slog.Info("dispatcher connected", "roads", d.Roads)
+
+	for {
+		var t uint8
+		// TODO: Should we ever disconnect client?
+		if err := binary.Read(client, binary.BigEndian, &t); err != nil {
+			return fmt.Errorf("error reading message type: %w", err)
+		}
+
+		switch t {
+		case PlateMessageType:
+			return sendError(client, IllegalMessageType)
+		case WantHeartbeatMessageType:
+			// TODO: Implement.
+			// It is an error for a client to send multiple WantHeartbeat messages on a single connection.
+			return nil
+		case IAmCameraMessageType:
+			return sendError(client, AlreadyIdentifiedError)
+		case IAmDispatcherMessageType:
+			return sendError(client, AlreadyIdentifiedError)
+		default:
+			return sendError(client, IllegalMessageType)
+		}
+	}
 }
 
 // sendError sends an ErrorMessage to the client.
