@@ -16,7 +16,7 @@ import (
 // When the client does something that this protocol specification declares "an error", the server must send the
 // client an appropriate Error message and immediately disconnect that client.
 type SpeedLimitEnforcementServer struct {
-	CameraID atomic.Uint64
+	ConnectionID atomic.Uint64
 
 	CameraHandler     *CameraHandler
 	DispatcherHandler *DispatcherHandler
@@ -27,31 +27,32 @@ var MultipleWantHeartbeatMessagesError = &ErrorMessage{Msg: "multiple WantHeartb
 // Handle handles a client connection.
 func (s *SpeedLimitEnforcementServer) Handle(conn net.Conn) error {
 	defer closeOrLog(conn)
-	client := &Conn{Conn: conn, ID: s.CameraID.Add(1)}
+	client := &Conn{Conn: conn, ID: s.ConnectionID.Add(1)}
+	slog.Info("client connected", "connection", client.ID)
 
-	var t uint8
-	if err := binary.Read(client, binary.BigEndian, &t); err != nil {
-		return fmt.Errorf("read error: %w", err)
-	}
-
-	switch t {
-	case IAmCameraMessageType:
-		return s.CameraHandler.handleCamera(client)
-	case IAmDispatcherMessageType:
-		return s.DispatcherHandler.handleDispatcher(client)
-	case WantHeartbeatMessageType:
-		// It is an error for a client to send multiple WantHeartbeat messages on a single connection.
-		if client.Heartbeat != nil {
-			return sendError(client, MultipleWantHeartbeatMessagesError)
+	for {
+		var t uint8
+		if err := binary.Read(client, binary.BigEndian, &t); err != nil {
+			return fmt.Errorf("read error: %w", err)
 		}
-		if err := beginHeartbeat(client); err != nil {
-			return fmt.Errorf("error beginning heartbeat: %w", err)
+		switch t {
+		case IAmCameraMessageType:
+			return s.CameraHandler.handleCamera(client)
+		case IAmDispatcherMessageType:
+			return s.DispatcherHandler.handleDispatcher(client)
+		case WantHeartbeatMessageType:
+			// It is an error for a client to send multiple WantHeartbeat messages on a single connection.
+			if client.Heartbeat != nil {
+				return sendError(client, MultipleWantHeartbeatMessagesError)
+			}
+			if err := beginHeartbeat(client); err != nil {
+				return fmt.Errorf("error beginning heartbeat: %w", err)
+			}
+		default:
+			slog.Error("unexpected message type", "type", t)
+			return sendError(client, illegalMessage(t))
 		}
-	default:
-		slog.Error("unexpected message type", "type", t)
-		return sendError(client, illegalMessage(t))
 	}
-	return nil
 }
 
 var AlreadyIdentifiedError = &ErrorMessage{Msg: "client has already identified itself"}

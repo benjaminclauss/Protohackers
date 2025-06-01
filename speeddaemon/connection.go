@@ -17,14 +17,6 @@ type Conn struct {
 	Heartbeat *Heartbeat
 }
 
-func (c *Conn) Read(p []byte) (n int, err error) {
-	return c.Conn.Read(p)
-}
-
-func (c *Conn) Write(p []byte) (n int, err error) {
-	return c.Conn.Write(p)
-}
-
 const Decisecond = 100 * time.Millisecond
 
 func beginHeartbeat(conn *Conn) error {
@@ -52,10 +44,12 @@ func heartbeat(conn *Conn) {
 		case <-conn.Heartbeat.Done:
 			return
 		case t := <-conn.Heartbeat.Ticker.C:
-			slog.Info("heartbeat", "time", t, "camera", conn.ID)
+			slog.Info("heartbeat", "time", t, "connection", conn.ID)
 			m := HeartbeatMessage{}
 			bytes, _ := m.MarshalBinary()
-			conn.Write(bytes)
+			if _, err := conn.Write(bytes); err != nil {
+				slog.Error("error writing heartbeat", "err", err)
+			}
 		}
 	}
 }
