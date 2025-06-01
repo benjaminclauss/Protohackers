@@ -79,6 +79,11 @@ func serve(port int, handler func(net.Conn) error) error {
 			continue
 		}
 		slog.Debug("accepted new connection", "remote", conn.RemoteAddr())
-		go handler(conn)
+		go func() {
+			handlerErr := handler(conn)
+			if handlerErr != nil {
+				slog.Error("handler error", "err", handlerErr)
+			}
+		}()
 	}
 }
