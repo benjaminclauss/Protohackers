@@ -34,4 +34,6 @@ type Road struct{}
 type Car string
 
 type CameraRecord struct {
+	Camera
+	PlateMessage
 }

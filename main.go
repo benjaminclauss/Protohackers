@@ -50,11 +50,14 @@ func main() {
 		return http.ListenAndServe(":8080", nil)
 	})
 
+	records := make(chan speeddaemon.CameraRecord)
 	server := speeddaemon.SpeedLimitEnforcementServer{
-		CameraHandler:     speeddaemon.NewCameraHandler(),
+		CameraHandler:     speeddaemon.NewCameraHandler(records),
 		DispatcherHandler: speeddaemon.NewDispatcherHandler(),
+		Records:           records,
 	}
 	g.Go(func() error { return serve(50007, server.Handle) })
+	g.Go(server.EnforceSpeedLimit)
 
 	err := g.Wait()
 	if err != nil {

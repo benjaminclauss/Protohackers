@@ -20,6 +20,7 @@ type SpeedLimitEnforcementServer struct {
 
 	CameraHandler     *CameraHandler
 	DispatcherHandler *DispatcherHandler
+	Records           <-chan CameraRecord
 }
 
 var MultipleWantHeartbeatMessagesError = &ErrorMessage{Msg: "multiple WantHeartbeat messages"}
@@ -53,6 +54,40 @@ func (s *SpeedLimitEnforcementServer) Handle(conn net.Conn) error {
 			return sendError(client, illegalMessage(t))
 		}
 	}
+}
+
+// TODO: Accept context and terminate on shutdown.
+func (s *SpeedLimitEnforcementServer) EnforceSpeedLimit() error {
+	for r := range s.Records {
+		plate := r.PlateMessage.Plate
+		records := s.CameraHandler.FetchPlateRecords(plate)
+
+		var recordsOnRoad []CameraRecord
+		for _, other := range records {
+			if r == other {
+				continue
+			}
+			if other.Camera.Road == r.Camera.Road {
+				recordsOnRoad = append(recordsOnRoad, other)
+			}
+		}
+		fmt.Println(r)
+
+		for _, other := range recordsOnRoad {
+			fmt.Println(other)
+
+			distance := float64(max(r.Camera.Mile, other.Camera.Mile) - min(r.Camera.Mile, other.Camera.Mile))
+			duration := float64(max(r.Timestamp, other.Timestamp) - min(r.Timestamp, other.Timestamp))
+			mph := (distance / duration) * 3600
+
+			// TODO: .5 over is ok, right?
+			if mph > float64(r.Limit) {
+				s.DispatcherHandler.SendTicket(r, other, mph)
+			}
+		}
+
+	}
+	return nil
 }
 
 var AlreadyIdentifiedError = &ErrorMessage{Msg: "client has already identified itself"}

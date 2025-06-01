@@ -16,12 +16,15 @@ type CameraHandler struct {
 	connections map[uint64]*Conn
 	// TODO: Move this to a separate struct. Dependency inversion principle.
 	recordings map[Car][]CameraRecord
+
+	recordsChan chan<- CameraRecord
 }
 
-func NewCameraHandler() *CameraHandler {
+func NewCameraHandler(recordsChan chan<- CameraRecord) *CameraHandler {
 	return &CameraHandler{
 		connections: make(map[uint64]*Conn),
 		recordings:  make(map[Car][]CameraRecord),
+		recordsChan: recordsChan,
 	}
 }
 
@@ -95,7 +98,13 @@ func (h *CameraHandler) recordPlateMessage(c Camera, client net.Conn) error {
 		records = make([]CameraRecord, 0)
 	}
 	// TODO: Add camera information to record.
-	records = append(records, CameraRecord{})
+	records = append(records, CameraRecord{Camera: c, PlateMessage: *message})
 	h.recordings[Car(message.Plate)] = records
 	return nil
+}
+
+func (h *CameraHandler) FetchPlateRecords(plate string) []CameraRecord {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.recordings[Car(plate)]
 }
