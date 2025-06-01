@@ -28,8 +28,11 @@ func (c *Conn) Close() error {
 	defer c.mu.Unlock()
 
 	if c.Heartbeat != nil {
-		c.Heartbeat.Ticker.Stop()
-		c.Heartbeat.Done <- true
+		// A client may have registered a "zero" heartbeat interval, in which case we don't need to stop the ticker.
+		if c.Heartbeat.Ticker != nil {
+			c.Heartbeat.Ticker.Stop()
+			c.Heartbeat.Done <- true
+		}
 	}
 
 	return c.Conn.Close()
