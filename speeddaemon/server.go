@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"sync/atomic"
 )
 
 // SpeedLimitEnforcementServer coordinates enforcement of average speed limits on the Freedom Island road network.
@@ -15,6 +16,8 @@ import (
 // When the client does something that this protocol specification declares "an error", the server must send the
 // client an appropriate Error message and immediately disconnect that client.
 type SpeedLimitEnforcementServer struct {
+	CameraID atomic.Uint64
+
 	CameraHandler     *CameraHandler
 	DispatcherHandler *DispatcherHandler
 }
@@ -22,22 +25,33 @@ type SpeedLimitEnforcementServer struct {
 var MultipleWantHeartbeatMessagesError = &ErrorMessage{Msg: "multiple WantHeartbeat messages"}
 
 // Handle handles a client connection.
-func (s *SpeedLimitEnforcementServer) Handle(client net.Conn) error {
-	defer closeOrLog(client)
+func (s *SpeedLimitEnforcementServer) Handle(conn net.Conn) error {
+	defer closeOrLog(conn)
+	client := &Conn{Conn: conn, ID: s.CameraID.Add(1)}
 
 	var t uint8
 	if err := binary.Read(client, binary.BigEndian, &t); err != nil {
 		return fmt.Errorf("read error: %w", err)
 	}
+
 	switch t {
 	case IAmCameraMessageType:
 		return s.CameraHandler.handleCamera(client)
 	case IAmDispatcherMessageType:
 		return s.DispatcherHandler.handleDispatcher(client)
+	case WantHeartbeatMessageType:
+		// It is an error for a client to send multiple WantHeartbeat messages on a single connection.
+		if client.Heartbeat != nil {
+			return sendError(client, MultipleWantHeartbeatMessagesError)
+		}
+		if err := beginHeartbeat(client); err != nil {
+			return fmt.Errorf("error beginning heartbeat: %w", err)
+		}
 	default:
 		slog.Error("unexpected message type", "type", t)
 		return sendError(client, illegalMessage(t))
 	}
+	return nil
 }
 
 var AlreadyIdentifiedError = &ErrorMessage{Msg: "client has already identified itself"}
