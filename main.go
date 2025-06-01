@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/benjaminclauss/protohackers/speeddaemon"
 	"log"
 	"log/slog"
 	"net"
@@ -48,6 +49,11 @@ func main() {
 		http.HandleFunc("/", landingPageHandler)
 		return http.ListenAndServe(":8080", nil)
 	})
+
+	server := speeddaemon.SpeedLimitEnforcementServer{
+		CameraHandler: &speeddaemon.CameraHandler{},
+	}
+	g.Go(func() error { return serve(50007, server.Handle) })
 
 	err := g.Wait()
 	if err != nil {

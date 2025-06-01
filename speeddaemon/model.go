@@ -31,4 +31,7 @@ type TicketDispatcher struct {
 type Road struct{}
 
 // A Car has a specific number plate represented as an uppercase alphanumeric string.
-type Car struct{}
+type Car string
+
+type CameraRecord struct {
+}
