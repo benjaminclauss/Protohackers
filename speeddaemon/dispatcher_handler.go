@@ -57,7 +57,7 @@ func (h *DispatcherHandler) handleDispatcher(client net.Conn) error {
 
 		switch t {
 		case PlateMessageType:
-			return sendError(client, IllegalMessageType)
+			return sendError(client, illegalMessage(t))
 		case WantHeartbeatMessageType:
 			// It is an error for a client to send multiple WantHeartbeat messages on a single connection.
 			if conn.heartbeat != nil {
@@ -71,7 +71,7 @@ func (h *DispatcherHandler) handleDispatcher(client net.Conn) error {
 		case IAmDispatcherMessageType:
 			return sendError(client, AlreadyIdentifiedError)
 		default:
-			return sendError(client, IllegalMessageType)
+			return sendError(client, illegalMessage(t))
 		}
 	}
 }

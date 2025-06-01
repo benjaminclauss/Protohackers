@@ -19,8 +19,6 @@ type SpeedLimitEnforcementServer struct {
 	DispatcherHandler *DispatcherHandler
 }
 
-var IllegalMessageType = &ErrorMessage{Msg: "illegal message"}
-
 var MultipleWantHeartbeatMessagesError = &ErrorMessage{Msg: "multiple WantHeartbeat messages"}
 
 // Handle handles a client connection.
@@ -38,7 +36,7 @@ func (s *SpeedLimitEnforcementServer) Handle(client net.Conn) error {
 		return s.DispatcherHandler.handleDispatcher(client)
 	default:
 		slog.Error("unexpected message type", "type", t)
-		return sendError(client, IllegalMessageType)
+		return sendError(client, illegalMessage(t))
 	}
 }
 
@@ -62,4 +60,8 @@ func closeOrLog(conn net.Conn) {
 	if err := conn.Close(); err != nil {
 		slog.Error("error closing connection", "err", err, "remote_addr", conn.RemoteAddr())
 	}
+}
+
+func illegalMessage(t uint8) *ErrorMessage {
+	return &ErrorMessage{Msg: fmt.Sprintf("illegal message: %02X", t)}
 }

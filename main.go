@@ -51,7 +51,8 @@ func main() {
 	})
 
 	server := speeddaemon.SpeedLimitEnforcementServer{
-		CameraHandler: &speeddaemon.CameraHandler{},
+		CameraHandler:     speeddaemon.NewCameraHandler(),
+		DispatcherHandler: speeddaemon.NewDispatcherHandler(),
 	}
 	g.Go(func() error { return serve(50007, server.Handle) })
 

@@ -80,7 +80,7 @@ func (h *CameraHandler) handleCamera(client net.Conn) error {
 		case IAmDispatcherMessageType:
 			return sendError(client, AlreadyIdentifiedError)
 		default:
-			return sendError(client, IllegalMessageType)
+			return sendError(client, illegalMessage(t))
 		}
 	}
 }
