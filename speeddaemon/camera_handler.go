@@ -98,8 +98,10 @@ func (h *CameraHandler) recordPlateMessage(c Camera, client net.Conn) error {
 		records = make([]CameraRecord, 0)
 	}
 	// TODO: Add camera information to record.
-	records = append(records, CameraRecord{Camera: c, PlateMessage: *message})
+	r := CameraRecord{Camera: c, PlateMessage: *message}
+	records = append(records, r)
 	h.recordings[Car(message.Plate)] = records
+	h.recordsChan <- r
 	return nil
 }
 

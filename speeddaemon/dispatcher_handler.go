@@ -25,7 +25,6 @@ func (h *DispatcherHandler) handleDispatcher(conn *Conn) error {
 	h.mu.Lock()
 	h.connections[conn.ID] = conn
 	h.mu.Unlock()
-	defer h.disconnect(conn)
 
 	m, err := readIAmDispatcherMessage(conn)
 	if err != nil {
@@ -33,6 +32,8 @@ func (h *DispatcherHandler) handleDispatcher(conn *Conn) error {
 	}
 
 	d := TicketDispatcher{Roads: m.Roads}
+	// TODO: This is messy!
+	defer h.disconnect(conn, d)
 	h.registerForRoad(d, conn)
 	slog.Info("dispatcher connected", "roads", d.Roads)
 
@@ -106,10 +107,12 @@ func (h *DispatcherHandler) SendTicket(r CameraRecord, other CameraRecord, mph f
 	dispatchers := h.roadToDispatchers[r.Road]
 	if len(dispatchers) == 0 {
 		// TODO: Handle
+		fmt.Println("no dispatchers")
 		return
 	}
 
 	dispatcher := dispatchers[0]
+	fmt.Println(dispatcher.ID)
 
 	var earlier, later CameraRecord
 	// mile1 and timestamp1 must refer to the earlier of the 2 observations (the smaller timestamp), and mile2 and timestamp2 must refer to the later of the 2 observations (the larger timestam
@@ -130,6 +133,7 @@ func (h *DispatcherHandler) SendTicket(r CameraRecord, other CameraRecord, mph f
 		Timestamp2: later.Timestamp,
 		Speed:      uint16(mph),
 	}
+	fmt.Println(t)
 	// TODO: Handle error.
 	marshalBinary, _ := t.MarshalBinary()
 

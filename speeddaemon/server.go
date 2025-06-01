@@ -59,6 +59,7 @@ func (s *SpeedLimitEnforcementServer) Handle(conn net.Conn) error {
 // TODO: Accept context and terminate on shutdown.
 func (s *SpeedLimitEnforcementServer) EnforceSpeedLimit() error {
 	for r := range s.Records {
+		slog.Debug("checking tickets", "plate", r.Plate)
 		plate := r.PlateMessage.Plate
 		records := s.CameraHandler.FetchPlateRecords(plate)
 
@@ -77,11 +78,14 @@ func (s *SpeedLimitEnforcementServer) EnforceSpeedLimit() error {
 			fmt.Println(other)
 
 			distance := float64(max(r.Camera.Mile, other.Camera.Mile) - min(r.Camera.Mile, other.Camera.Mile))
+			fmt.Println(distance)
 			duration := float64(max(r.Timestamp, other.Timestamp) - min(r.Timestamp, other.Timestamp))
+			fmt.Println(duration)
 			mph := (distance / duration) * 3600
-
+			fmt.Println(mph)
 			// TODO: .5 over is ok, right?
 			if mph > float64(r.Limit) {
+				fmt.Println("sending ticket")
 				s.DispatcherHandler.SendTicket(r, other, mph)
 			}
 		}
