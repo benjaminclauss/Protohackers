@@ -70,15 +70,11 @@ func (h *CameraHandler) handleCamera(conn *Conn) error {
 }
 
 func (h *CameraHandler) disconnect(conn *Conn) {
-	// TODO: Log error.
+	// TODO: Log error. Should we do this here?
 	_ = conn.Close()
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	// TODO: Move this to common heartbeat code.
-	if conn.Heartbeat != nil {
-		conn.Heartbeat.Ticker.Stop()
-		conn.Heartbeat.Done <- true
-	}
+
 	delete(h.connections, conn.ID)
 }
 

@@ -8,13 +8,31 @@ import (
 	"time"
 )
 
+type Heartbeat struct {
+	Ticker *time.Ticker
+	Done   chan bool
+}
+
+// A Conn represents a unique client connection to the server.
 type Conn struct {
-	// mu protects concurrent write access.
+	// mu protects concurrent write access to the underlying net.Conn.
 	mu sync.Mutex
 
+	ID uint64
 	net.Conn
-	ID        uint64
 	Heartbeat *Heartbeat
+}
+
+func (c *Conn) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.Heartbeat != nil {
+		c.Heartbeat.Ticker.Stop()
+		c.Heartbeat.Done <- true
+	}
+
+	return c.Conn.Close()
 }
 
 const Decisecond = 100 * time.Millisecond
@@ -42,19 +60,15 @@ func heartbeat(conn *Conn) {
 	for {
 		select {
 		case <-conn.Heartbeat.Done:
+			slog.Info("heartbeat done", "connection", conn.ID)
 			return
 		case t := <-conn.Heartbeat.Ticker.C:
 			slog.Info("heartbeat", "time", t, "connection", conn.ID)
 			m := HeartbeatMessage{}
 			bytes, _ := m.MarshalBinary()
 			if _, err := conn.Write(bytes); err != nil {
-				slog.Error("error writing heartbeat", "err", err)
+				slog.Warn("error writing heartbeat", "err", err)
 			}
 		}
 	}
-}
-
-type Heartbeat struct {
-	Ticker *time.Ticker
-	Done   chan bool
 }

@@ -26,9 +26,9 @@ var MultipleWantHeartbeatMessagesError = &ErrorMessage{Msg: "multiple WantHeartb
 
 // Handle handles a client connection.
 func (s *SpeedLimitEnforcementServer) Handle(conn net.Conn) error {
-	defer closeOrLog(conn)
 	client := &Conn{Conn: conn, ID: s.ConnectionID.Add(1)}
 	slog.Info("client connected", "connection", client.ID)
+	defer closeOrLog(client)
 
 	for {
 		var t uint8

@@ -62,13 +62,10 @@ func (h *DispatcherHandler) handleDispatcher(conn *Conn) error {
 }
 
 func (h *DispatcherHandler) disconnect(conn *Conn) {
-	// TODO: Log error.
+	// TODO: Log error. Should we do this here?
 	_ = conn.Close()
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if conn.Heartbeat != nil {
-		conn.Heartbeat.Ticker.Stop()
-		conn.Heartbeat.Done <- true
-	}
+
 	delete(h.connections, conn.ID)
 }
