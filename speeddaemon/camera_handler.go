@@ -78,7 +78,7 @@ func (h *CameraHandler) disconnect(conn *Conn) {
 	delete(h.connections, conn.ID)
 }
 
-func (h *CameraHandler) recordPlateMessage(_ Camera, client net.Conn) error {
+func (h *CameraHandler) recordPlateMessage(c Camera, client net.Conn) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -87,13 +87,13 @@ func (h *CameraHandler) recordPlateMessage(_ Camera, client net.Conn) error {
 		return fmt.Errorf("error reading plate message: %w", err)
 	}
 
-	slog.Info("received plate message", "plate", message.Plate, "timestamp", message.Timestamp)
+	slog.Info("received plate message", "road", c.Road, "mile", c.Mile, "limit", c.Limit,
+		"plate", message.Plate, "timestamp", message.Timestamp)
 
 	records, ok := h.recordings[Car(message.Plate)]
 	if !ok {
 		records = make([]CameraRecord, 0)
 	}
-
 	// TODO: Add camera information to record.
 	records = append(records, CameraRecord{})
 	h.recordings[Car(message.Plate)] = records
