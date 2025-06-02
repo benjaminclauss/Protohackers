@@ -85,7 +85,7 @@ func (h *DispatcherHandler) registerForRoad(d TicketDispatcher, conn *Conn) {
 
 func (h *DispatcherHandler) disconnect(conn *Conn, d TicketDispatcher) {
 	// TODO: Log error. Should we do this here?
-	_ = conn.Close()
+	//_ = conn.Close()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 

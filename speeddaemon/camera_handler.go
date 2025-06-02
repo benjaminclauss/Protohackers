@@ -26,6 +26,8 @@ func NewCameraHandler(recordsChan chan<- CameraRecord) *CameraHandler {
 func (h *CameraHandler) handleCamera(conn *Conn) error {
 	m, err := readIAmCameraMessage(conn)
 	if err != nil {
+		// TODO: Remove
+		slog.Error("bad connection", "ID", conn.ID, "error", err, "addr", conn.RemoteAddr())
 		return fmt.Errorf("error reading IAmCamera message: %w", err)
 	}
 
