@@ -40,7 +40,7 @@ func (h *CameraHandler) handleCamera(conn *Conn) error {
 	}
 
 	camera := Camera{Road: m.Road, Mile: m.Mile, Limit: m.Limit}
-	slog.Info("camera connected", "road", camera.Road, "mile", camera.Mile, "limit", camera.Limit)
+	slog.Info("camera connected", "id", conn.ID, "road", camera.Road, "mile", camera.Mile, "limit", camera.Limit)
 
 	for {
 		var t uint8
@@ -102,6 +102,7 @@ func (h *CameraHandler) recordPlateMessage(c Camera, client net.Conn) error {
 	records = append(records, r)
 	h.recordings[Car(message.Plate)] = records
 	h.recordsChan <- r
+	slog.Debug("wrote record, moving on...")
 	return nil
 }
 

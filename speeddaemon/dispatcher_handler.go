@@ -39,7 +39,7 @@ func (h *DispatcherHandler) handleDispatcher(conn *Conn) error {
 	defer h.disconnect(conn, d)
 	h.registerForRoad(d, conn)
 	h.sendQueuedTickets(d, conn)
-	slog.Info("dispatcher connected", "roads", d.Roads)
+	slog.Info("dispatcher connected", "ID", conn.ID, "roads", d.Roads)
 
 	for {
 		var t uint8

@@ -121,6 +121,7 @@ func (s *SpeedLimitEnforcementServer) EnforceSpeedLimit() error {
 			}
 		}
 
+		slog.Debug("finished checking tickets", "plate", r.Plate)
 	}
 	return nil
 }

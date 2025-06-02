@@ -24,6 +24,7 @@ type Conn struct {
 }
 
 func (c *Conn) Close() error {
+	slog.Debug("closing connection", "id", c.ID)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
