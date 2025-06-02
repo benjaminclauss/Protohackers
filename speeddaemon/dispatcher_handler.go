@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 )
 
@@ -12,12 +13,14 @@ type DispatcherHandler struct {
 
 	connections       map[uint64]*Conn
 	roadToDispatchers map[uint16][]*Conn
+	ticketQueue       []TicketMessage
 }
 
 func NewDispatcherHandler() *DispatcherHandler {
 	return &DispatcherHandler{
 		connections:       make(map[uint64]*Conn),
 		roadToDispatchers: make(map[uint16][]*Conn),
+		ticketQueue:       make([]TicketMessage, 0),
 	}
 }
 
@@ -35,6 +38,7 @@ func (h *DispatcherHandler) handleDispatcher(conn *Conn) error {
 	// TODO: This is messy!
 	defer h.disconnect(conn, d)
 	h.registerForRoad(d, conn)
+	h.sendQueuedTickets(d, conn)
 	slog.Info("dispatcher connected", "roads", d.Roads)
 
 	for {
@@ -104,16 +108,6 @@ func (h *DispatcherHandler) SendTicket(r CameraRecord, other CameraRecord, mph f
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	dispatchers := h.roadToDispatchers[r.Road]
-	if len(dispatchers) == 0 {
-		// TODO: Handle
-		fmt.Println("no dispatchers")
-		return
-	}
-
-	dispatcher := dispatchers[0]
-	fmt.Println(dispatcher.ID)
-
 	var earlier, later CameraRecord
 	// mile1 and timestamp1 must refer to the earlier of the 2 observations (the smaller timestamp), and mile2 and timestamp2 must refer to the later of the 2 observations (the larger timestam
 	if r.Timestamp < other.Timestamp {
@@ -134,10 +128,49 @@ func (h *DispatcherHandler) SendTicket(r CameraRecord, other CameraRecord, mph f
 		Speed:      uint16(mph),
 	}
 	fmt.Println(t)
+
+	dispatchers := h.roadToDispatchers[r.Road]
+	if len(dispatchers) == 0 {
+		h.ticketQueue = append(h.ticketQueue, t)
+		slog.Debug("no dispatchers for road, queueing ticket", "road", r.Road, "plate", r.Plate, "speed", mph)
+		return
+	}
+	dispatcher := dispatchers[0]
+	fmt.Println(dispatcher.ID)
+
 	// TODO: Handle error.
 	marshalBinary, _ := t.MarshalBinary()
 
 	dispatcher.mu.Lock()
 	defer dispatcher.mu.Unlock()
 	dispatcher.Conn.Write(marshalBinary)
+}
+
+func (h *DispatcherHandler) sendQueuedTickets(d TicketDispatcher, conn *Conn) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	slog.Debug("checking queued tickets")
+
+	var remainInQueue, toSend []TicketMessage
+	for _, t := range h.ticketQueue {
+		if slices.Contains(d.Roads, t.Road) {
+			toSend = append(toSend, t)
+		} else {
+			remainInQueue = append(remainInQueue, t)
+		}
+	}
+	h.ticketQueue = remainInQueue
+
+	if len(toSend) == 0 {
+		return
+	}
+	slog.Debug("sending queued tickets", "count", len(toSend))
+
+	conn.mu.Lock()
+	defer conn.mu.Unlock()
+	for _, m := range toSend {
+		marshalBinary, _ := m.MarshalBinary()
+		// TODO: Handle error above and below.
+		conn.Write(marshalBinary)
+	}
 }
