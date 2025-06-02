@@ -175,7 +175,8 @@ func sendError(client net.Conn, m *ErrorMessage) error {
 }
 
 // TODO: Move to utility package reusable for other problems.
-func closeOrLog(conn net.Conn) {
+func closeOrLog(conn *Conn) {
+	slog.Debug("connection was closed", "ID", conn.ID)
 	if err := conn.Close(); err != nil {
 		slog.Error("error closing connection", "err", err, "remote_addr", conn.RemoteAddr())
 	}

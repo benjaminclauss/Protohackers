@@ -70,9 +70,11 @@ func heartbeat(conn *Conn) {
 			slog.Info("heartbeat", "time", t, "connection", conn.ID)
 			m := HeartbeatMessage{}
 			bytes, _ := m.MarshalBinary()
+			conn.mu.Lock()
 			if _, err := conn.Write(bytes); err != nil {
 				slog.Warn("error writing heartbeat", "err", err)
 			}
+			conn.mu.Unlock()
 		}
 	}
 }
