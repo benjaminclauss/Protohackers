@@ -4,16 +4,12 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log/slog"
-	"net"
 	"sync"
 )
 
 type CameraHandler struct {
 	mu sync.Mutex
 
-	// TODO: Do we need this if we are only writing heartbeats to camera?
-	// For Dispatchers, we need to send tickets separate of reading (and anything else - close if received).
-	connections map[uint64]*Conn
 	// TODO: Move this to a separate struct. Dependency inversion principle.
 	recordings map[Car][]CameraRecord
 
@@ -22,18 +18,12 @@ type CameraHandler struct {
 
 func NewCameraHandler(recordsChan chan<- CameraRecord) *CameraHandler {
 	return &CameraHandler{
-		connections: make(map[uint64]*Conn),
 		recordings:  make(map[Car][]CameraRecord),
 		recordsChan: recordsChan,
 	}
 }
 
 func (h *CameraHandler) handleCamera(conn *Conn) error {
-	h.mu.Lock()
-	h.connections[conn.ID] = conn
-	h.mu.Unlock()
-	defer h.disconnect(conn)
-
 	m, err := readIAmCameraMessage(conn)
 	if err != nil {
 		return fmt.Errorf("error reading IAmCamera message: %w", err)
@@ -43,6 +33,7 @@ func (h *CameraHandler) handleCamera(conn *Conn) error {
 	slog.Info("camera connected", "id", conn.ID, "road", camera.Road, "mile", camera.Mile, "limit", camera.Limit)
 
 	for {
+		slog.Debug("reading from connection", "ID", conn.ID)
 		var t uint8
 		// TODO: Should we ever disconnect client?
 		if err := binary.Read(conn, binary.BigEndian, &t); err != nil {
@@ -69,19 +60,11 @@ func (h *CameraHandler) handleCamera(conn *Conn) error {
 		default:
 			return sendError(conn, illegalMessage(t))
 		}
+		slog.Debug("done reading from connection", "ID", conn.ID)
 	}
 }
 
-func (h *CameraHandler) disconnect(conn *Conn) {
-	// TODO: Log error. Should we do this here?
-	_ = conn.Close()
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	delete(h.connections, conn.ID)
-}
-
-func (h *CameraHandler) recordPlateMessage(c Camera, client net.Conn) error {
+func (h *CameraHandler) recordPlateMessage(c Camera, client *Conn) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -90,7 +73,7 @@ func (h *CameraHandler) recordPlateMessage(c Camera, client net.Conn) error {
 		return fmt.Errorf("error reading plate message: %w", err)
 	}
 
-	slog.Info("received plate message", "road", c.Road, "mile", c.Mile, "limit", c.Limit,
+	slog.Info("received plate message", "ID", client.ID, "road", c.Road, "mile", c.Mile, "limit", c.Limit,
 		"plate", message.Plate, "timestamp", message.Timestamp)
 
 	records, ok := h.recordings[Car(message.Plate)]
