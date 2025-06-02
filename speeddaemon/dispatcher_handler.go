@@ -104,35 +104,16 @@ func (h *DispatcherHandler) disconnect(conn *Conn, d TicketDispatcher) {
 	}
 }
 
-func (h *DispatcherHandler) SendTicket(r CameraRecord, other CameraRecord, mph float64) {
+func (h *DispatcherHandler) SendTicket(t TicketMessage) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	var earlier, later CameraRecord
-	// mile1 and timestamp1 must refer to the earlier of the 2 observations (the smaller timestamp), and mile2 and timestamp2 must refer to the later of the 2 observations (the larger timestam
-	if r.Timestamp < other.Timestamp {
-		earlier = r
-		later = other
-	} else {
-		earlier = other
-		later = r
-	}
-
-	t := TicketMessage{
-		Plate:      r.Plate,
-		Road:       r.Road,
-		Mile1:      earlier.Camera.Mile,
-		Timestamp1: earlier.Timestamp,
-		Mile2:      later.Camera.Mile,
-		Timestamp2: later.Timestamp,
-		Speed:      uint16(mph * 100),
-	}
 	fmt.Println(t)
 
-	dispatchers := h.roadToDispatchers[r.Road]
+	dispatchers := h.roadToDispatchers[t.Road]
 	if len(dispatchers) == 0 {
 		h.ticketQueue = append(h.ticketQueue, t)
-		slog.Debug("no dispatchers for road, queueing ticket", "road", r.Road, "plate", r.Plate, "speed", mph)
+		slog.Debug("no dispatchers for road, queueing ticket", "road", t.Road, "plate", t.Plate, "speed", t.Speed)
 		return
 	}
 	dispatcher := dispatchers[0]

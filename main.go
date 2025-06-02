@@ -55,6 +55,7 @@ func main() {
 		CameraHandler:     speeddaemon.NewCameraHandler(records),
 		DispatcherHandler: speeddaemon.NewDispatcherHandler(),
 		Records:           records,
+		TicketsSent:       make(map[speeddaemon.TicketOnDay]bool),
 	}
 	g.Go(func() error { return serve(50007, server.Handle) })
 	g.Go(server.EnforceSpeedLimit)

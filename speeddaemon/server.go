@@ -21,6 +21,9 @@ type SpeedLimitEnforcementServer struct {
 	CameraHandler     *CameraHandler
 	DispatcherHandler *DispatcherHandler
 	Records           <-chan CameraRecord
+
+	// TODO: Please polish...
+	TicketsSent map[TicketOnDay]bool
 }
 
 var MultipleWantHeartbeatMessagesError = &ErrorMessage{Msg: "multiple WantHeartbeat messages"}
@@ -86,12 +89,73 @@ func (s *SpeedLimitEnforcementServer) EnforceSpeedLimit() error {
 			// TODO: .5 over is ok, right?
 			if mph > float64(r.Limit) {
 				fmt.Println("sending ticket")
-				s.DispatcherHandler.SendTicket(r, other, mph)
+				t := ticket(r, other, mph)
+
+				d := day(t.Timestamp1)
+				todStart := TicketOnDay{
+					Plate: t.Plate,
+					Day:   d,
+				}
+				_, ok := s.TicketsSent[todStart]
+				if ok {
+					slog.Debug("ticket already sent on first day, not sending!!!")
+					continue
+				} else {
+					s.TicketsSent[todStart] = true
+					s.DispatcherHandler.SendTicket(t)
+				}
+
+				d = day(t.Timestamp2)
+				todEnd := TicketOnDay{
+					Plate: t.Plate,
+					Day:   d,
+				}
+				_, ok = s.TicketsSent[todEnd]
+				if ok {
+					slog.Debug("ticket already sent on other day, not sending!!!")
+					continue
+				} else {
+					s.TicketsSent[todEnd] = true
+					s.DispatcherHandler.SendTicket(t)
+				}
 			}
 		}
 
 	}
 	return nil
+}
+
+type TicketOnDay struct {
+	Plate string
+	Day   uint32
+}
+
+func day(timestamp uint32) uint32 {
+	// Since timestamps do not count leap seconds, days are defined by floor(timestamp / 86400).
+	// TODO: Maximize revenues.
+	return timestamp / 86400
+}
+
+func ticket(r CameraRecord, other CameraRecord, mph float64) TicketMessage {
+	var earlier, later CameraRecord
+	// mile1 and timestamp1 must refer to the earlier of the 2 observations (the smaller timestamp), and mile2 and timestamp2 must refer to the later of the 2 observations (the larger timestam
+	if r.Timestamp < other.Timestamp {
+		earlier = r
+		later = other
+	} else {
+		earlier = other
+		later = r
+	}
+
+	return TicketMessage{
+		Plate:      r.Plate,
+		Road:       r.Road,
+		Mile1:      earlier.Camera.Mile,
+		Timestamp1: earlier.Timestamp,
+		Mile2:      later.Camera.Mile,
+		Timestamp2: later.Timestamp,
+		Speed:      uint16(mph * 100),
+	}
 }
 
 var AlreadyIdentifiedError = &ErrorMessage{Msg: "client has already identified itself"}
