@@ -125,7 +125,7 @@ func (h *DispatcherHandler) SendTicket(r CameraRecord, other CameraRecord, mph f
 		Timestamp1: earlier.Timestamp,
 		Mile2:      later.Camera.Mile,
 		Timestamp2: later.Timestamp,
-		Speed:      uint16(mph),
+		Speed:      uint16(mph * 100),
 	}
 	fmt.Println(t)
 
