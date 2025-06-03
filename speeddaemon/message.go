@@ -1,7 +1,6 @@
 package speeddaemon
 
 import (
-	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -41,20 +40,18 @@ type PlateMessage struct {
 }
 
 func readPlateMessage(r io.Reader) (*PlateMessage, error) {
-	buf := bufio.NewReader(r)
-
-	lengthByte, err := buf.ReadByte()
-	if err != nil {
+	var lengthByte [1]byte
+	if _, err := io.ReadFull(r, lengthByte[:]); err != nil {
 		return nil, fmt.Errorf("error reading plate length: %w", err)
 	}
 
-	plateBytes := make([]byte, lengthByte)
-	if _, err := io.ReadFull(buf, plateBytes); err != nil {
+	plateBytes := make([]byte, lengthByte[0])
+	if _, err := io.ReadFull(r, plateBytes); err != nil {
 		return nil, fmt.Errorf("error reading plate: %w", err)
 	}
 
 	var ts uint32
-	if err := binary.Read(buf, binary.BigEndian, &ts); err != nil {
+	if err := binary.Read(r, binary.BigEndian, &ts); err != nil {
 		return nil, fmt.Errorf("error reading timestamp: %w", err)
 	}
 
@@ -174,18 +171,19 @@ type IAmDispatcherMessage struct {
 }
 
 func readIAmDispatcherMessage(r io.Reader) (*IAmDispatcherMessage, error) {
-	buf := bufio.NewReader(r)
-
-	numRoadsByte, err := buf.ReadByte()
-	if err != nil {
+	var numRoadsByte [1]byte
+	if _, err := io.ReadFull(r, numRoadsByte[:]); err != nil {
 		return nil, fmt.Errorf("error reading numroads: %w", err)
 	}
 
-	roads := make([]uint16, numRoadsByte)
+	numRoads := numRoadsByte[0]
+	roads := make([]uint16, numRoads)
+
 	for i := range roads {
-		if err := binary.Read(buf, binary.BigEndian, &roads[i]); err != nil {
+		if err := binary.Read(r, binary.BigEndian, &roads[i]); err != nil {
 			return nil, fmt.Errorf("error reading road[%d]: %w", i, err)
 		}
 	}
+
 	return &IAmDispatcherMessage{Roads: roads}, nil
 }

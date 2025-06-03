@@ -148,7 +148,10 @@ func Test_readIAmDispatcherMessage(t *testing.T) {
 			given:    []byte{0x01, 0x00, 0x42},
 			expected: &IAmDispatcherMessage{Roads: []uint16{66}},
 		},
-		{[]byte{0x03, 0x00, 0x42, 0x01, 0x70, 0x13, 0x88}, &IAmDispatcherMessage{Roads: []uint16{66, 368, 5000}}},
+		{
+			given:    []byte{0x03, 0x00, 0x42, 0x01, 0x70, 0x13, 0x88},
+			expected: &IAmDispatcherMessage{Roads: []uint16{66, 368, 5000}},
+		},
 	}
 
 	for _, test := range tests {
