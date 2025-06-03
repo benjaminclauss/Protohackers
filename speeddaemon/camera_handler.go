@@ -44,6 +44,7 @@ func (h *CameraHandler) handleCamera(conn *Conn) error {
 
 		switch t {
 		case PlateMessageType:
+			slog.Debug("reading plate message", "ID", conn.ID, "road", camera.Road, "mile", camera.Mile, "limit", camera.Limit)
 			if err := h.recordPlateMessage(camera, conn); err != nil {
 				return fmt.Errorf("error recording plate message: %w", err)
 			}
@@ -67,9 +68,6 @@ func (h *CameraHandler) handleCamera(conn *Conn) error {
 }
 
 func (h *CameraHandler) recordPlateMessage(c Camera, client *Conn) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
 	message, err := readPlateMessage(client)
 	if err != nil {
 		return fmt.Errorf("error reading plate message: %w", err)
@@ -78,21 +76,29 @@ func (h *CameraHandler) recordPlateMessage(c Camera, client *Conn) error {
 	slog.Info("received plate message", "ID", client.ID, "road", c.Road, "mile", c.Mile, "limit", c.Limit,
 		"plate", message.Plate, "timestamp", message.Timestamp)
 
-	records, ok := h.recordings[Car(message.Plate)]
+	// TODO: Add camera information to record.
+	r := CameraRecord{Camera: c, PlateMessage: *message}
+	h.recordPlate(r)
+
+	h.recordsChan <- r
+	return nil
+}
+
+func (h *CameraHandler) recordPlate(r CameraRecord) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	records, ok := h.recordings[Car(r.Plate)]
 	if !ok {
 		records = make([]CameraRecord, 0)
 	}
-	// TODO: Add camera information to record.
-	r := CameraRecord{Camera: c, PlateMessage: *message}
-	records = append(records, r)
-	h.recordings[Car(message.Plate)] = records
-	h.recordsChan <- r
-	slog.Debug("wrote record, moving on...")
-	return nil
+
+	h.recordings[Car(r.Plate)] = append(records, r)
 }
 
 func (h *CameraHandler) FetchPlateRecords(plate string) []CameraRecord {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+
 	return h.recordings[Car(plate)]
 }
