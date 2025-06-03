@@ -83,11 +83,8 @@ func (s *SpeedLimitEnforcementServer) EnforceSpeedLimit() error {
 			fmt.Println(other)
 
 			distance := float64(max(r.Camera.Mile, other.Camera.Mile) - min(r.Camera.Mile, other.Camera.Mile))
-			fmt.Println(distance)
 			duration := float64(max(r.Timestamp, other.Timestamp) - min(r.Timestamp, other.Timestamp))
-			fmt.Println(duration)
 			mph := (distance / duration) * 3600
-			fmt.Println(mph)
 
 			// It is always required to ticket a car exceeding the speed limit by 0.5 mph or more.
 			// In cases where the car is exceeding the speed limit by less than 0.5 mph, it is acceptable to omit the ticket.
@@ -128,30 +125,28 @@ func (s *SpeedLimitEnforcementServer) sendTicket(t TicketMessage) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	d := day(t.Timestamp1)
-	todStart := TicketOnDay{
-		Plate: t.Plate,
-		Day:   d,
-	}
-	_, ok := s.TicketsSent[todStart]
-	if ok {
-		slog.Debug("ticket already sent on first day, not sending!!!")
-	} else {
-		s.TicketsSent[todStart] = true
-		s.DispatcherHandler.SendTicket(t)
-	}
+	d1 := day(t.Timestamp1)
+	todStart := TicketOnDay{Plate: t.Plate, Day: d1}
+	d2 := day(t.Timestamp2)
+	todEnd := TicketOnDay{Plate: t.Plate, Day: d2}
 
-	d = day(t.Timestamp2)
-	todEnd := TicketOnDay{
-		Plate: t.Plate,
-		Day:   d,
-	}
-	_, ok = s.TicketsSent[todEnd]
-	if ok {
-		slog.Debug("ticket already sent on other day, not sending!!!")
-	} else {
+	_, ok := s.TicketsSent[todStart]
+	if !ok {
+		s.TicketsSent[todStart] = true
 		s.TicketsSent[todEnd] = true
 		s.DispatcherHandler.SendTicket(t)
+		return
+	} else {
+		slog.Debug("ticket already sent on first day, not sending!!!")
+	}
+
+	_, ok = s.TicketsSent[todEnd]
+	if !ok {
+		s.TicketsSent[todStart] = true
+		s.TicketsSent[todEnd] = true
+		s.DispatcherHandler.SendTicket(t)
+	} else {
+		slog.Debug("ticket already sent on other day, not sending!!!")
 	}
 }
 
