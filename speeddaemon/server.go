@@ -77,18 +77,15 @@ func (s *SpeedLimitEnforcementServer) EnforceSpeedLimit() error {
 				recordsOnRoad = append(recordsOnRoad, other)
 			}
 		}
-		fmt.Println(r)
 
 		for _, other := range recordsOnRoad {
-			fmt.Println(other)
-
 			distance := float64(max(r.Camera.Mile, other.Camera.Mile) - min(r.Camera.Mile, other.Camera.Mile))
 			duration := float64(max(r.Timestamp, other.Timestamp) - min(r.Timestamp, other.Timestamp))
 			mph := (distance / duration) * 3600
 
 			// It is always required to ticket a car exceeding the speed limit by 0.5 mph or more.
 			// In cases where the car is exceeding the speed limit by less than 0.5 mph, it is acceptable to omit the ticket.
-			if float64(mph)+0.5 > float64(r.Limit) {
+			if float64(mph) > float64(r.Limit)+0.5 {
 				t := ticket(r, other, mph)
 				s.sendTicket(t)
 			}
