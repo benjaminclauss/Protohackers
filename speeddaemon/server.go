@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"sync"
 	"sync/atomic"
 )
 
@@ -17,6 +18,7 @@ import (
 // client an appropriate Error message and immediately disconnect that client.
 type SpeedLimitEnforcementServer struct {
 	ConnectionID atomic.Uint64
+	mu           sync.Mutex
 
 	CameraHandler     *CameraHandler
 	DispatcherHandler *DispatcherHandler
@@ -90,53 +92,14 @@ func (s *SpeedLimitEnforcementServer) EnforceSpeedLimit() error {
 			// It is always required to ticket a car exceeding the speed limit by 0.5 mph or more.
 			// In cases where the car is exceeding the speed limit by less than 0.5 mph, it is acceptable to omit the ticket.
 			if float64(mph)+0.5 > float64(r.Limit) {
-				fmt.Println("sending ticket")
 				t := ticket(r, other, mph)
-
-				d := day(t.Timestamp1)
-				todStart := TicketOnDay{
-					Plate: t.Plate,
-					Day:   d,
-				}
-				_, ok := s.TicketsSent[todStart]
-				if ok {
-					slog.Debug("ticket already sent on first day, not sending!!!")
-					continue
-				} else {
-					s.TicketsSent[todStart] = true
-					s.DispatcherHandler.SendTicket(t)
-				}
-
-				d = day(t.Timestamp2)
-				todEnd := TicketOnDay{
-					Plate: t.Plate,
-					Day:   d,
-				}
-				_, ok = s.TicketsSent[todEnd]
-				if ok {
-					slog.Debug("ticket already sent on other day, not sending!!!")
-					continue
-				} else {
-					s.TicketsSent[todEnd] = true
-					s.DispatcherHandler.SendTicket(t)
-				}
+				s.sendTicket(t)
 			}
 		}
 
 		slog.Debug("finished checking tickets", "plate", r.Plate)
 	}
 	return nil
-}
-
-type TicketOnDay struct {
-	Plate string
-	Day   uint32
-}
-
-func day(timestamp uint32) uint32 {
-	// Since timestamps do not count leap seconds, days are defined by floor(timestamp / 86400).
-	// TODO: Maximize revenues.
-	return timestamp / 86400
 }
 
 func ticket(r CameraRecord, other CameraRecord, mph float64) TicketMessage {
@@ -159,6 +122,48 @@ func ticket(r CameraRecord, other CameraRecord, mph float64) TicketMessage {
 		Timestamp2: later.Timestamp,
 		Speed:      uint16(mph * 100),
 	}
+}
+
+func (s *SpeedLimitEnforcementServer) sendTicket(t TicketMessage) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	d := day(t.Timestamp1)
+	todStart := TicketOnDay{
+		Plate: t.Plate,
+		Day:   d,
+	}
+	_, ok := s.TicketsSent[todStart]
+	if ok {
+		slog.Debug("ticket already sent on first day, not sending!!!")
+	} else {
+		s.TicketsSent[todStart] = true
+		s.DispatcherHandler.SendTicket(t)
+	}
+
+	d = day(t.Timestamp2)
+	todEnd := TicketOnDay{
+		Plate: t.Plate,
+		Day:   d,
+	}
+	_, ok = s.TicketsSent[todEnd]
+	if ok {
+		slog.Debug("ticket already sent on other day, not sending!!!")
+	} else {
+		s.TicketsSent[todEnd] = true
+		s.DispatcherHandler.SendTicket(t)
+	}
+}
+
+type TicketOnDay struct {
+	Plate string
+	Day   uint32
+}
+
+func day(timestamp uint32) uint32 {
+	// Since timestamps do not count leap seconds, days are defined by floor(timestamp / 86400).
+	// TODO: Maximize revenues.
+	return timestamp / 86400
 }
 
 var AlreadyIdentifiedError = &ErrorMessage{Msg: "client has already identified itself"}
