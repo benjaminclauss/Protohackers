@@ -86,8 +86,10 @@ func (s *SpeedLimitEnforcementServer) EnforceSpeedLimit() error {
 			fmt.Println(duration)
 			mph := (distance / duration) * 3600
 			fmt.Println(mph)
-			// TODO: .5 over is ok, right?
-			if mph > float64(r.Limit) {
+
+			// It is always required to ticket a car exceeding the speed limit by 0.5 mph or more.
+			// In cases where the car is exceeding the speed limit by less than 0.5 mph, it is acceptable to omit the ticket.
+			if float64(mph)+0.5 > float64(r.Limit) {
 				fmt.Println("sending ticket")
 				t := ticket(r, other, mph)
 
