@@ -108,7 +108,7 @@ func (h *DispatcherHandler) SendTicket(t TicketMessage) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	fmt.Println(t)
+	slog.Debug("sending ticket", "plate", t.Plate, "ticket", t)
 
 	dispatchers := h.roadToDispatchers[t.Road]
 	if len(dispatchers) == 0 {
@@ -130,6 +130,7 @@ func (h *DispatcherHandler) SendTicket(t TicketMessage) {
 func (h *DispatcherHandler) sendQueuedTickets(d TicketDispatcher, conn *Conn) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+
 	slog.Debug("checking queued tickets")
 
 	var remainInQueue, toSend []TicketMessage

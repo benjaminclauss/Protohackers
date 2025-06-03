@@ -127,24 +127,18 @@ func (s *SpeedLimitEnforcementServer) sendTicket(t TicketMessage) {
 	d2 := day(t.Timestamp2)
 	todEnd := TicketOnDay{Plate: t.Plate, Day: d2}
 
-	_, ok := s.TicketsSent[todStart]
-	if !ok {
-		s.TicketsSent[todStart] = true
-		s.TicketsSent[todEnd] = true
-		s.DispatcherHandler.SendTicket(t)
-		return
-	} else {
-		slog.Debug("ticket already sent on first day, not sending!!!")
-	}
+	_, ok1 := s.TicketsSent[todStart]
+	_, ok2 := s.TicketsSent[todEnd]
 
-	_, ok = s.TicketsSent[todEnd]
-	if !ok {
-		s.TicketsSent[todStart] = true
-		s.TicketsSent[todEnd] = true
-		s.DispatcherHandler.SendTicket(t)
-	} else {
-		slog.Debug("ticket already sent on other day, not sending!!!")
+	// block if *any* day in the span is already ticketed
+	if ok1 || ok2 { // covers same-day and 2-day spans
+		slog.Debug("ticket overlaps used day; skipping",
+			"plate", t.Plate, "d1", d1, "d2", d2)
+		return
 	}
+	s.TicketsSent[todStart] = true
+	s.TicketsSent[todEnd] = true
+	s.DispatcherHandler.SendTicket(t)
 }
 
 type TicketOnDay struct {
