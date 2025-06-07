@@ -17,6 +17,7 @@ type UnusualDatabaseProgram struct {
 func (p *UnusualDatabaseProgram) Listen(conn net.PacketConn) error {
 	for {
 		// All requests and responses must be shorter than 1000 bytes.
+		// TODO: We are allocating a new array every time!
 		buf := make([]byte, 1024)
 		n, addr, err := conn.ReadFrom(buf)
 		if err != nil {
