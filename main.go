@@ -60,6 +60,15 @@ func main() {
 	g.Go(func() error { return serve(50007, server.Handle) })
 	g.Go(server.EnforceSpeedLimit)
 
+	g.Go(func() error {
+		// TODO: Inject this in deploy.
+		pc, err := net.ListenPacket("udp", host+":50008")
+		if err != nil {
+			log.Fatal(err)
+		}
+		return p.Listen(pc)
+	})
+
 	err := g.Wait()
 	if err != nil {
 		log.Fatal(err)
