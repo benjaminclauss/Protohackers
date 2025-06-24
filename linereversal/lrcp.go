@@ -2,6 +2,7 @@ package linereversal
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"sync"
@@ -12,10 +13,15 @@ const maximumMessageSize = 1000
 
 var ErrExceededMessageSize = errors.New("exceeded message size limit")
 
+// A SessionToken uniquely identifies a client session.
+// It is provided by a client upon connection.
+// The peer for any given session is at a fixed IP address and port number.
+type SessionToken uint32
+
 type LRCPListener struct {
 	mu sync.Mutex
 
-	Sessions map[uint32]net.Addr
+	Sessions map[SessionToken]net.Addr
 }
 
 func (l *LRCPListener) Handle(conn net.PacketConn) error {
@@ -36,7 +42,7 @@ func (l *LRCPListener) Handle(conn net.PacketConn) error {
 		// Messages are sent in UDP packets.
 		// Each UDP packet contains a single LRCP message.
 		// TODO: When the server receives an illegal packet it must silently ignore the packet instead of interpreting it as LRCP.
-		err = handleMessage(buf[:n], conn, addr)
+		err = l.handleMessage(buf[:n], conn, addr)
 	}
 }
 
@@ -54,18 +60,13 @@ var (
 )
 
 func (l *LRCPListener) handleMessage(buf []byte, conn net.PacketConn, addr net.Addr) error {
-	// TODO: Validation
-	// When the server receives an illegal packet it must silently ignore the packet instead of interpreting it as LRCP.
-
+	// When the server receives an illegal packet, it must silently ignore the packet instead of interpreting it as LRCP.
 	m, err := ParseMessage(string(buf))
 	if err != nil {
 		return err
 	}
 
-	switch m.(type) {
-	case *ConnectMessage:
-		l.handleConnectMessage(m.(*ConnectMessage), addr)
-	}
+	fmt.Println(m)
 
 	return nil
 }
@@ -77,9 +78,9 @@ func (l *LRCPListener) handleConnectMessage(m *ConnectMessage, conn net.PacketCo
 	defer l.mu.Unlock()
 
 	// If no session with this token is open: open one, and associate it with the IP address and port number that the UDP packet originated from.
-	_, ok := l.Sessions[m.SessionToken]
+	_, ok := l.Sessions[m.Session]
 	if !ok {
-		l.Sessions[m.SessionToken] = addr
+		l.Sessions[m.Session] = addr
 	}
 
 	_, err := conn.WriteTo([]byte(connectionAck), addr)

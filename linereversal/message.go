@@ -20,45 +20,150 @@ const MessageSeparator = "/"
 // The first field is a string specifying the message type (here, "data").
 // The remaining fields depend on the message type. Numeric fields are represented as ASCII text.
 func ParseMessage(s string) (Message, error) {
+	// Packet contents must begin with a forward slash and end with a forward slash.
 	if !strings.HasPrefix(s, MessageSeparator) {
 		return nil, fmt.Errorf("invalid message: must begin with forward slash")
 	}
 	if !strings.HasSuffix(s, MessageSeparator) {
 		return nil, fmt.Errorf("invalid message: must end with forward slash")
 	}
-	stripped := strings.TrimSuffix(strings.TrimPrefix(s, MessageSeparator), MessageSeparator)
 
-	parts := strings.Split(stripped, MessageSeparator)
-	mType := parts[0]
+	s = strings.TrimSuffix(strings.TrimPrefix(s, MessageSeparator), MessageSeparator)
 
-	switch mType {
+	fields := SplitEscaped(s, '/', '\\')
+
+	messageType := fields[0]
+	switch messageType {
 	case "connect":
-		return parseConnectMessage(parts[1:])
+		return parseConnectMessage(fields[1:])
 	case "data":
-		return parseDataMessage(parts[1:])
+		return parseDataMessage(fields[1:])
+	case "ack":
+		return parseAckMessage(fields[1:])
+	case "close":
+		return parseCloseMessage(fields[1:])
 	default:
-		return nil, fmt.Errorf("invalid message: invalid message type")
+		return nil, fmt.Errorf("invalid message: unknown message type: %s", messageType)
 	}
+}
+
+func SplitEscaped(s string, sep, escape rune) []string {
+	var fields []string
+	var current []rune
+	escaped := false
+
+	for _, r := range s {
+		if escaped {
+			current = append(current, r)
+			escaped = false
+			continue
+		}
+		if r == escape {
+			escaped = true
+			continue
+		}
+		if r == sep {
+			fields = append(fields, string(current))
+			current = nil
+			continue
+		}
+		current = append(current, r)
+	}
+
+	fields = append(fields, string(current))
+	return fields
 }
 
 // A ConnectMessage is sent by a client, to a server, to request that a session is opened.
 type ConnectMessage struct {
-	SessionToken uint32
+	Session SessionToken
 }
 
-func parseConnectMessage(parts []string) (Message, error) {
-	if len(parts) != 1 {
-		return nil, fmt.Errorf("invalid message: connect message must contain one value")
+func parseConnectMessage(fields []string) (*ConnectMessage, error) {
+	if len(fields) != 1 {
+		return nil, fmt.Errorf("invalid message: connect message must contain one field")
 	}
-	session, err := parseNumericField(parts[0])
+	session, err := parseNumericField(fields[0])
 	if err != nil {
 		return nil, fmt.Errorf("error reading SESSION: %w", err)
 	}
-	return &ConnectMessage{SessionToken: session}, nil
+	return &ConnectMessage{Session: SessionToken(session)}, nil
 }
 
-func parseDataMessage(p []string) (Message, error) {
-	return nil, nil
+// A DataMessage transmits payload data.
+type DataMessage struct {
+	Session SessionToken
+	// Pos refers to the position in the stream of unescaped application-layer bytes, not the escaped data passed in LRCP.
+	Pos  uint32
+	Data string
+}
+
+func parseDataMessage(fields []string) (*DataMessage, error) {
+	if len(fields) != 3 {
+		return nil, fmt.Errorf("invalid message: data message must contain three fields")
+	}
+
+	m := &DataMessage{}
+	session, err := parseNumericField(fields[0])
+	if err != nil {
+		return nil, fmt.Errorf("error reading SESSION: %w", err)
+	}
+	m.Session = SessionToken(session)
+
+	position, err := parseNumericField(fields[1])
+	if err != nil {
+		return nil, fmt.Errorf("error reading POSITION: %w", err)
+	}
+	m.Pos = position
+
+	m.Data = fields[2]
+
+	return m, nil
+}
+
+// An AckMessage acknowledges receipt of payload data.
+type AckMessage struct {
+	Session SessionToken
+	// Length tells the other side how many bytes of payload have been successfully received so far.
+	Length uint32
+}
+
+func parseAckMessage(fields []string) (*AckMessage, error) {
+	if len(fields) != 2 {
+		return nil, fmt.Errorf("invalid message: ack message must contain two fields")
+	}
+
+	m := &AckMessage{}
+	session, err := parseNumericField(fields[0])
+	if err != nil {
+		return nil, fmt.Errorf("error reading SESSION: %w", err)
+	}
+	m.Session = SessionToken(session)
+
+	length, err := parseNumericField(fields[1])
+	if err != nil {
+		return nil, fmt.Errorf("error reading LENGTH: %w", err)
+	}
+	m.Length = length
+
+	return m, nil
+}
+
+// A CloseMessage requests that the session is closed.
+// This can be initiated by either the server or the client.
+type CloseMessage struct {
+	Session SessionToken
+}
+
+func parseCloseMessage(fields []string) (*CloseMessage, error) {
+	if len(fields) != 1 {
+		return nil, fmt.Errorf("invalid message: close message must contain one field")
+	}
+	session, err := parseNumericField(fields[0])
+	if err != nil {
+		return nil, fmt.Errorf("error reading SESSION: %w", err)
+	}
+	return &CloseMessage{Session: SessionToken(session)}, nil
 }
 
 // MaximumNumericFieldValue is the maximum numeric field value.

@@ -1,8 +1,9 @@
 package linereversal
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseMessage(t *testing.T) {
@@ -12,7 +13,19 @@ func TestParseMessage(t *testing.T) {
 	}{
 		"connect": {
 			m:        "/connect/1234567/",
-			expected: &ConnectMessage{SessionToken: 1234567},
+			expected: &ConnectMessage{Session: 1234567},
+		},
+		"hello": {
+			m:        "/data/1234567/0/hello/",
+			expected: &DataMessage{1234567, 0, "hello"},
+		},
+		"ack": {
+			m:        "/ack/1234567/1024/",
+			expected: &AckMessage{1234567, 1024},
+		},
+		"close": {
+			m:        "/close/1234567/",
+			expected: &CloseMessage{1234567},
 		},
 	}
 	for name, test := range tests {
